@@ -254,8 +254,83 @@ html{height:100%}body{min-height:100%;background:var(--bg);color:var(--t);font-f
 const tg = window.Telegram && window.Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
+// ── API ──
+const API_URL = 'YOUR_RAILWAY_URL'; // замените на URL Railway после деплоя
+var currentUser = null; // заполняется после авторизации
+
+async function apiAuth() {
+  var initData = tg && tg.initData ? tg.initData : '';
+  if (!initData) {
+    // Режим разработки — без Telegram
+    currentUser = { role: 'investor', first_name: 'Гость', tg_id: 0, subscription: null };
+    return currentUser;
+  }
+  try {
+    var res = await fetch(API_URL + '/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ init_data: initData })
+    });
+    if (!res.ok) throw new Error('auth failed');
+    currentUser = await res.json();
+    return currentUser;
+  } catch(e) {
+    currentUser = { role: 'investor', first_name: 'Гость', tg_id: 0, subscription: null };
+    return currentUser;
+  }
+}
+
+async function apiGetProperties(city, minYield) {
+  try {
+    var url = API_URL + '/properties?limit=20';
+    if (city && city !== 'Все') url += '&city=' + encodeURIComponent(city);
+    if (minYield) url += '&min_yield=' + minYield;
+    var res = await fetch(url);
+    if (!res.ok) throw new Error('failed');
+    var data = await res.json();
+    return data.items || [];
+  } catch(e) {
+    return null; // null = показать демо-данные
+  }
+}
+
+// Нормализует объект из API к формату приложения
+function normalizeProperty(p) {
+  var collected = p.collected || 0;
+  var goal = p.goal_amount || 1;
+  var pct = Math.round(collected / goal * 100);
+  return {
+    id: String(p.id),
+    badge: pct > 50 ? 'hot' : 'new',
+    badgeText: pct > 50 ? 'Горячий' : 'Новый',
+    name: p.title,
+    loc: p.city + ', ' + p.region,
+    yld: String(p.yield_pct),
+    from: '₽' + Number(p.min_entry).toLocaleString('ru'),
+    raisedPct: pct,
+    total: '₽' + Math.round(goal/1000000) + 'М',
+    got: '₽' + Math.round(collected/1000000) + 'М',
+    gotN: collected,
+    totalN: goal,
+    deadline: p.deadline,
+    area: '—',
+    floors: '—',
+    units: '—',
+    desc: p.description,
+    features: [],
+    phone: p.phone,
+    email: p.email,
+    rInitials: (p.realtor_name || 'РН').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase(),
+    rName: p.realtor_name || '',
+    rAgency: '',
+    rRating: '—',
+    rDeals: '—'
+  };
+}
+
 // ── mode / tab state ──
 let mode = 'investor', tab = 'feed';
+var liveProperties = null; // объекты из API, null = ещё не загружены
 
 // ── demo photos ──
 const PH = {
@@ -430,32 +505,75 @@ function projectCard(p) {
 }
 
 function screenFeed() {
-  return '<div class="hero">'
+  // Рендерим скелет сразу, потом заполняем данными
+  var heroHtml = '<div class="hero">'
     + '<div class="hero-tag">Недвижимость России</div>'
     + '<div class="hero-h">Выберите объект</div>'
     + '<div class="hero-s">Проекты по всей России</div>'
-    + '<div class="hstats"><div class="hs"><div class="v">12</div><div class="l">объектов</div></div>'
-    + '<div class="hs"><div class="v">8.4%</div><div class="l">средн. доход</div></div>'
-    + '<div class="hs"><div class="v">₽200М</div><div class="l">привлечено</div></div></div>'
-    + '</div>'
-    + '<div class="filter-row">'
-    + '<div class="fchip on" onclick="fChip(this)">Все</div>'
-    + '<div class="fchip" onclick="fChip(this)">Москва</div>'
-    + '<div class="fchip" onclick="fChip(this)">СПб</div>'
-    + '<div class="fchip" onclick="fChip(this)">Сочи</div>'
-    + '<div class="fchip" onclick="fChip(this)">Казань</div>'
-    + '<div class="fchip" onclick="fChip(this)">8%+</div>'
-    + '</div>'
-    + projectCard(PROJECTS.moscow)
-    + projectCard(PROJECTS.spb)
-    + projectCard(PROJECTS.sochi)
-    + projectCard(PROJECTS.kazan)
-    + '<div class="safe"></div>';
+    + '<div class="hstats" id="hero-stats">'
+    + '<div class="hs"><div class="v" id="hs-count">...</div><div class="l">объектов</div></div>'
+    + '<div class="hs"><div class="v" id="hs-yield">...</div><div class="l">средн. доход</div></div>'
+    + '</div></div>';
+
+  var filterHtml = '<div class="filter-row">'
+    + '<div class="fchip on" onclick="fChip(this,\'\')">Все</div>'
+    + '<div class="fchip" onclick="fChip(this,\'Москва\')">Москва</div>'
+    + '<div class="fchip" onclick="fChip(this,\'СПб\')">СПб</div>'
+    + '<div class="fchip" onclick="fChip(this,\'Сочи\')">Сочи</div>'
+    + '<div class="fchip" onclick="fChip(this,\'Казань\')">Казань</div>'
+    + '<div class="fchip" onclick="fChip(this,\'\',8)">8%+</div>'
+    + '</div>';
+
+  var cardsHtml = '<div id="feed-cards">'
+    + '<div style="padding:40px 20px;text-align:center;color:#555;font-size:13px">Загрузка объектов...</div>'
+    + '</div><div class="safe"></div>';
+
+  // Загружаем объекты асинхронно
+  loadFeedCards('', null);
+
+  return heroHtml + filterHtml + cardsHtml;
 }
 
-function fChip(el) {
+async function loadFeedCards(city, minYield) {
+  var container = document.getElementById('feed-cards');
+  if (!container) return;
+
+  var items = await apiGetProperties(city, minYield);
+
+  // Если API недоступен — показываем демо
+  if (!items) {
+    items = Object.values(PROJECTS);
+  } else if (items.length === 0) {
+    // Пустой ответ от API — тоже показываем демо пока нет реальных данных
+    items = Object.values(PROJECTS);
+  } else {
+    items = items.map(normalizeProperty);
+    // Добавляем в PROJECTS для openDetail
+    items.forEach(function(p) { PROJECTS[p.id] = p; });
+  }
+
+  // Обновляем статистику в hero
+  var hsCount = document.getElementById('hs-count');
+  var hsYield = document.getElementById('hs-yield');
+  if (hsCount) hsCount.textContent = items.length;
+  if (hsYield && items.length > 0) {
+    var avg = items.reduce(function(s,p){ return s + parseFloat(p.yld||0); }, 0) / items.length;
+    hsYield.textContent = avg.toFixed(1) + '%';
+  }
+
+  // Рендерим карточки
+  var html = '';
+  for (var i = 0; i < items.length; i++) {
+    html += projectCard(items[i]);
+  }
+  if (!html) html = '<div style="padding:40px 20px;text-align:center;color:#555;font-size:13px">Объектов пока нет</div>';
+  container.innerHTML = html + '<div class="safe"></div>';
+}
+
+function fChip(el, city, minYield) {
   document.querySelectorAll('.fchip').forEach(function(c){ c.classList.remove('on'); });
   el.classList.add('on');
+  loadFeedCards(city || '', minYield || null);
 }
 
 function screenSaved() {
@@ -463,8 +581,11 @@ function screenSaved() {
 }
 
 function screenIProfile() {
-  return '<div class="phead"><div class="avatar av-inv">АК</div><div><div class="phead-name">Алексей Козлов</div><div class="phead-role">' + getIcon('user') + 'Инвестор · вход бесплатный</div></div></div>'
-    + '<div class="sgrid"><div class="scard"><div class="sv">6</div><div class="sl">просмотрено</div></div><div class="scard"><div class="sv">2</div><div class="sl">в избранном</div></div></div>'
+  var name = (currentUser && currentUser.first_name) || 'Инвестор';
+  var initials = name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase() || 'ИН';
+  var savedCount = saved.size;
+  return '<div class="phead"><div class="avatar av-inv">' + initials + '</div><div><div class="phead-name">' + name + '</div><div class="phead-role">' + getIcon('user') + 'Инвестор · вход бесплатный</div></div></div>'
+    + '<div class="sgrid"><div class="scard"><div class="sv">' + savedCount + '</div><div class="sl">в избранном</div></div><div class="scard"><div class="sv">∞</div><div class="sl">объектов доступно</div></div></div>'
     + '<div class="mlist">'
     + '<div class="mi">' + getIcon('heart') + '<span>Избранные объекты</span>' + getIcon('arr') + '</div>'
     + '<div class="mi">' + getIcon('bell') + '<span>Уведомления о новых объектах</span>' + getIcon('arr') + '</div>'
@@ -767,21 +888,61 @@ function getIcon(name) {
   return icons[name] || '';
 }
 
-renderAll();
+// ── INIT: авторизация → рендер ──
+async function init() {
+  // Показываем экран загрузки
+  document.getElementById('body').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px"><div style="width:36px;height:36px;border:3px solid #2a2a45;border-top-color:#c9a84c;border-radius:50%;animation:spin .8s linear infinite"></div><div style="font-size:14px;color:#555">Авторизация...</div></div>';
+  document.getElementById('tabbar').innerHTML = '';
+
+  var user = await apiAuth();
+
+  // Определяем режим по роли
+  if (user.role === 'admin') {
+    mode = 'admin';
+  } else if (user.role === 'realtor') {
+    mode = 'realtor';
+    // Обновляем label тарифа в шапке
+    if (user.subscription) {
+      MODES.realtor.label = 'Риелтор · ' + user.subscription.label;
+    } else {
+      MODES.realtor.label = 'Риелтор · нет подписки';
+    }
+  } else {
+    mode = 'investor';
+  }
+
+  // Скрываем переключатель режимов (в проде не нужен)
+  var modebar = document.querySelector('.modebar');
+  if (modebar && tg && tg.initData) {
+    modebar.style.display = 'none';
+  }
+
+  // Обновляем пилюлю с именем
+  var pill = document.getElementById('mpill');
+  if (pill) pill.textContent = user.first_name || MODES[mode].label;
+
+  tab = MODES[mode].tabs[0].id;
+  renderAll();
+  fixSticky();
+}
 
 function fixSticky() {
   var topbar = document.getElementById('topbar');
   var modebar = document.querySelector('.modebar');
   var tabbar = document.getElementById('tabbar');
-  if (!topbar || !modebar || !tabbar) return;
+  if (!topbar || !tabbar) return;
   var h1 = topbar.getBoundingClientRect().height;
-  var h2 = modebar.getBoundingClientRect().height;
-  modebar.style.top = Math.round(h1) + 'px';
+  var h2 = (modebar && modebar.style.display !== 'none') ? modebar.getBoundingClientRect().height : 0;
+  if (modebar) modebar.style.top = Math.round(h1) + 'px';
   tabbar.style.top = Math.round(h1 + h2) + 'px';
 }
 
-fixSticky();
 window.addEventListener('resize', fixSticky);
+
+init();
 </script>
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 </body>
 </html>
