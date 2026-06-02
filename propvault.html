@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PropVault</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--gold:#c9a84c;--gold-dim:rgba(201,168,76,0.12);--gold-b:rgba(201,168,76,0.32);--blue:#5badff;--purple:#b07aff;--bg:#0f0f1a;--bg2:#16162a;--bg3:#13131f;--brd:#2a2a45;--t:#fff;--t2:#888;--t3:#555;--green:#4ecb71;--orange:#ffaa44;--red:#e24b4a}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--t);font-family:-apple-system,'SF Pro Display','Segoe UI',sans-serif;overflow-x:hidden}
+#topbar{background:#17223b;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+#topbar .logo{font-size:17px;font-weight:600;color:#fff;letter-spacing:-.3px}
+#topbar .logo span{color:var(--gold)}
+#topbar .mpill{margin-left:auto;font-size:11px;padding:3px 10px;background:rgba(91,173,255,.12);border:.5px solid rgba(91,173,255,.3);border-radius:20px;color:var(--blue)}
+.modebar{display:flex;background:var(--bg3);border-bottom:.5px solid var(--brd)}
+.mb{flex:1;padding:10px 4px;text-align:center;font-size:11px;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;transition:all .18s;user-select:none}
+.mb.on{color:var(--blue);border-bottom-color:var(--blue)}
+#tabbar{display:flex;background:var(--bg3);border-bottom:.5px solid var(--brd);position:sticky;top:87px;z-index:99}
+.tab{flex:1;padding:9px 4px 8px;text-align:center;font-size:10px;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;transition:all .18s;user-select:none}
+.tab svg{display:block;margin:0 auto 3px;width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tab.on{color:var(--gold);border-bottom-color:var(--gold)}
+.hero{background:#16213e;padding:18px 16px 16px}
+.hero-tag{font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+.hero-h{font-size:20px;font-weight:600;color:#fff;margin-bottom:3px}
+.hero-s{font-size:12px;color:var(--t3);margin-bottom:14px}
+.hstats{display:flex;gap:20px}
+.hs .v{font-size:18px;font-weight:600;color:var(--gold)}
+.hs .l{font-size:10px;color:var(--t3);margin-top:2px}
+.sec{padding:16px 16px 8px;font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase}
+.filter-row{display:flex;gap:6px;padding:12px 16px 6px;overflow-x:auto;scrollbar-width:none}
+.filter-row::-webkit-scrollbar{display:none}
+.fchip{padding:5px 12px;border-radius:20px;font-size:11px;white-space:nowrap;cursor:pointer;border:.5px solid var(--brd);color:var(--t3);background:var(--bg2);transition:all .15s;user-select:none}
+.fchip.on{background:var(--gold-dim);border-color:var(--gold-b);color:var(--gold)}
+.pcard{margin:0 16px 12px;background:var(--bg2);border-radius:14px;border:.5px solid var(--brd);overflow:hidden;cursor:pointer;transition:border-color .15s}
+.pcard:active{border-color:var(--gold-b)}
+/* slider */
+.slider-wrap{position:relative;height:200px;overflow:hidden;background:#111}
+.slides{display:flex;height:100%;transition:transform .3s ease}
+.slide{flex:0 0 100%;height:100%;overflow:hidden}
+.slide img{width:100%;height:100%;object-fit:cover;display:block}
+.slide-placeholder{width:100%;height:100%}
+.slide-prev,.slide-next{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10}
+.slide-prev{left:8px}.slide-next{right:8px}
+.slide-prev svg,.slide-next svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.slide-dots{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:5px;pointer-events:none}
+.dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.4);transition:background .2s}
+.dot.on{background:#fff}
+.photo-count{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;padding:3px 8px;border-radius:10px;pointer-events:none}
+.pbadge{position:absolute;top:10px;left:10px;font-size:10px;padding:3px 9px;border-radius:20px;font-weight:500;z-index:5;pointer-events:none}
+.pbadge.hot{background:rgba(201,168,76,.18);color:var(--gold);border:.5px solid var(--gold-b)}
+.pbadge.new{background:rgba(91,173,255,.15);color:var(--blue);border:.5px solid rgba(91,173,255,.3)}
+.pbadge.pend{background:rgba(255,165,0,.15);color:var(--orange);border:.5px solid rgba(255,165,0,.3)}
+.pbadge.pub{background:rgba(78,203,113,.15);color:var(--green);border:.5px solid rgba(78,203,113,.3)}
+.pinfo{padding:12px 14px}
+.pname{font-size:14px;font-weight:600;color:#fff;margin-bottom:3px}
+.ploc{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:4px;margin-bottom:10px}
+.ploc svg{width:11px;height:11px;stroke:var(--gold);fill:none;stroke-width:2;flex-shrink:0}
+.pmeta{display:flex;justify-content:space-between;align-items:flex-end}
+.pyield .pct{font-size:20px;font-weight:600;color:var(--gold);line-height:1}
+.pyield .lb,.pprice .lb{font-size:10px;color:var(--t3);margin-top:2px}
+.pprice{text-align:right}
+.pprice .am{font-size:13px;font-weight:600;color:#fff}
+.pbar{margin-top:10px}
+.pbar .br{height:3px;background:var(--brd);border-radius:2px;overflow:hidden}
+.pbar .fl{height:100%;background:var(--gold);border-radius:2px}
+.pbar .bm{display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--t3)}
+.more-hint{display:flex;align-items:center;justify-content:flex-end;margin-top:8px;font-size:11px;color:var(--gold);gap:3px}
+.more-hint svg{width:12px;height:12px;stroke:var(--gold);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+/* profile */
+.phead{padding:20px 16px 12px;display:flex;align-items:center;gap:12px}
+.avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;flex-shrink:0}
+.av-inv{background:rgba(201,168,76,.12);border:1.5px solid rgba(201,168,76,.35);color:var(--gold)}
+.av-re{background:rgba(91,173,255,.12);border:1.5px solid rgba(91,173,255,.3);color:var(--blue)}
+.phead-name{font-size:16px;font-weight:600;color:#fff}
+.phead-role{font-size:11px;color:var(--gold);margin-top:3px;display:flex;align-items:center;gap:4px}
+.sgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 16px 12px}
+.scard{background:var(--bg2);border:.5px solid var(--brd);border-radius:12px;padding:12px}
+.scard .sv{font-size:22px;font-weight:600;color:var(--gold)}
+.scard .sl{font-size:10px;color:var(--t3);margin-top:2px}
+.mlist{margin:0 16px}
+.mi{display:flex;align-items:center;gap:10px;padding:13px 14px;background:var(--bg2);border:.5px solid var(--brd);border-radius:10px;margin-bottom:6px;cursor:pointer}
+.mi svg{width:18px;height:18px;stroke:var(--t3);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.mi span{font-size:13px;color:#ccc;flex:1}
+.mi .arr{stroke:var(--brd);width:14px}
+.mi.cta svg{stroke:var(--gold)}.mi.cta span{color:var(--gold)}
+.quota{margin:12px 16px;background:var(--bg2);border:.5px solid var(--brd);border-radius:10px;padding:12px 14px}
+.quota .qt{font-size:11px;color:var(--t2);margin-bottom:8px}
+.quota .qb{height:4px;background:var(--brd);border-radius:2px;overflow:hidden;margin-bottom:5px}
+.quota .qf{height:100%;background:var(--gold);border-radius:2px}
+.quota .qm{display:flex;justify-content:space-between;font-size:10px;color:var(--t3)}
+.ocard{margin:0 16px 8px;background:var(--bg2);border:.5px solid var(--brd);border-radius:12px;overflow:hidden}
+.ocard-top{display:flex;align-items:center;gap:8px;padding:12px 14px 10px}
+.ocard-top .on2{font-size:13px;font-weight:600;color:#fff;flex:1}
+.ocard-body{padding:0 14px 12px;font-size:11px;color:var(--t3)}
+.ocard-thumb{width:44px;height:34px;border-radius:6px;object-fit:cover;flex-shrink:0}
+.ocard-thumb-ph{width:44px;height:34px;border-radius:6px;background:var(--brd);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ocard-thumb-ph svg{width:16px;height:16px;stroke:var(--t3);fill:none;stroke-width:1.5}
+/* form */
+.form-wrap{padding:16px}
+.form-title{font-size:16px;font-weight:600;color:#fff;margin-bottom:3px}
+.form-sub{font-size:11px;color:var(--t3);margin-bottom:16px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:10px;color:var(--t2);margin-bottom:5px}
+.field input,.field textarea{width:100%;padding:10px 12px;background:var(--bg2);border:.5px solid var(--brd);border-radius:8px;color:#fff;font-size:12px;font-family:inherit;outline:none;transition:border-color .15s;appearance:none}
+.field input:focus,.field textarea:focus{border-color:var(--gold-b)}
+.field textarea{resize:none;height:70px}
+.field-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.photo-upload-zone{border:1.5px dashed var(--brd);border-radius:10px;padding:20px 12px;text-align:center;cursor:pointer;margin-bottom:10px;position:relative}
+.photo-upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.photo-upload-zone svg{width:28px;height:28px;stroke:var(--t3);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:block;margin:0 auto 8px}
+.photo-upload-zone p{font-size:12px;color:var(--t3)}
+.photo-upload-zone span{font-size:10px;color:var(--t3);display:block;margin-top:3px}
+.photo-preview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.preview-item{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:.5px solid var(--brd)}
+.preview-item img{width:100%;height:100%;object-fit:cover}
+.preview-item .del-btn{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);border:none;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.preview-item .del-btn svg{width:10px;height:10px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round}
+.preview-item .main-badge{position:absolute;bottom:3px;left:3px;font-size:8px;padding:2px 5px;background:var(--gold);color:#000;border-radius:4px;font-weight:600}
+.submit-btn{width:100%;padding:13px;background:var(--gold-dim);border:.5px solid var(--gold-b);border-radius:10px;color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px}
+/* plans */
+.plans-header{padding:18px 16px 10px}
+.plans-header h2{font-size:18px;font-weight:600;color:#fff}
+.plans-header p{font-size:12px;color:var(--t3);margin-top:4px}
+.plan{margin:0 16px 10px;border-radius:14px;border:.5px solid var(--brd);overflow:hidden}
+.plan.feat{border-color:var(--gold-b)}
+.plan-head{padding:14px 16px 12px;position:relative}
+.plan-head.s{background:var(--bg2)}.plan-head.p{background:#1a1610}.plan-head.e{background:#140f20}
+.plan-name{font-size:11px;color:var(--t3);letter-spacing:1px;text-transform:uppercase}
+.plan-price{display:flex;align-items:baseline;gap:4px;margin-top:4px}
+.plan-price .pa{font-size:28px;font-weight:700}
+.plan-price .pp{font-size:12px;color:var(--t3)}
+.plan-badge2{position:absolute;top:14px;right:14px;font-size:10px;padding:3px 9px;border-radius:10px}
+.plan-badge2.pop{background:rgba(201,168,76,.18);color:var(--gold);border:.5px solid var(--gold-b)}
+.plan-badge2.top{background:rgba(160,100,255,.18);color:var(--purple);border:.5px solid rgba(160,100,255,.35)}
+.plan-feats{background:var(--bg3);padding:12px 16px}
+.pfeat{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:12px;color:#bbb}
+.pfeat:last-child{margin-bottom:0}
+.pfeat svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.pfeat.dim{color:var(--t3)}.pfeat.dim svg{stroke:#333}
+.plan-btn{margin:10px 16px 14px;padding:11px;border-radius:10px;border:none;width:calc(100% - 32px);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.plan-btn.s{background:var(--bg2);border:.5px solid var(--brd);color:var(--t3)}
+.plan-btn.p{background:var(--gold-dim);border:.5px solid var(--gold-b);color:var(--gold)}
+.plan-btn.e{background:rgba(160,100,255,.12);border:.5px solid rgba(160,100,255,.35);color:var(--purple)}
+/* moderation */
+.mod-head{padding:18px 16px 10px}
+.mod-head h2{font-size:18px;font-weight:600;color:#fff}
+.mod-head p{font-size:12px;color:var(--t3);margin-top:4px}
+.mcard{margin:0 16px 10px;background:var(--bg2);border:.5px solid var(--brd);border-radius:12px;overflow:hidden}
+.mcard-slider{height:120px;overflow:hidden;background:#111;position:relative}
+.mcard-slides{display:flex;height:100%;transition:transform .3s}
+.mcard-slide{flex:0 0 100%;height:100%}
+.mcard-slide img{width:100%;height:100%;object-fit:cover}
+.mcard-slide .ph{width:100%;height:100%;background:var(--bg3);display:flex;align-items:center;justify-content:center}
+.mc-nav{position:absolute;bottom:6px;right:8px;background:rgba(0,0,0,.5);color:#fff;font-size:9px;padding:2px 6px;border-radius:8px;cursor:pointer}
+.mcard-top{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px}
+.mcard-top .mt{font-size:13px;font-weight:600;color:#fff}
+.ms{font-size:10px;padding:3px 8px;border-radius:8px}
+.ms.pend{background:rgba(255,165,0,.15);color:var(--orange)}
+.ms.ok{background:rgba(78,203,113,.15);color:var(--green)}
+.mcard-body{padding:0 14px 12px}
+.mcard-body p{font-size:11px;color:var(--t3);margin-bottom:4px}
+.mcard-body .realtor{font-size:11px;color:var(--blue)}
+.mbtns{display:flex;gap:8px;margin-top:10px}
+.mbtns button{flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.mbtns .appr{background:rgba(78,203,113,.12);border:.5px solid rgba(78,203,113,.3);color:var(--green)}
+.mbtns .rej{background:rgba(226,75,74,.1);border:.5px solid rgba(226,75,74,.25);color:var(--red)}
+/* admin stats */
+.astats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 16px 12px}
+.astat{background:var(--bg2);border:.5px solid var(--brd);border-radius:12px;padding:14px}
+.astat .av{font-size:24px;font-weight:700;color:var(--gold)}
+.astat .al{font-size:10px;color:var(--t3);margin-top:3px}
+.arow{display:flex;justify-content:space-between;padding:8px 0;border-bottom:.5px solid var(--brd)}
+.arow:last-child{border-bottom:none}
+.arow .ak{font-size:12px;color:var(--t2)}
+.arow .aval{font-size:12px;color:var(--gold);font-weight:600}
+.abox{margin:0 16px 10px;background:var(--bg2);border:.5px solid var(--brd);border-radius:12px;padding:14px}
+.abox-title{font-size:11px;color:var(--t3);margin-bottom:10px}
+.empty{padding:50px 20px;text-align:center}
+.empty svg{width:40px;height:40px;stroke:var(--brd);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;display:block;margin:0 auto 12px}
+.empty p{font-size:13px;color:var(--t3)}
+.add-btn{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 16px 0;padding:12px;background:var(--gold-dim);border:.5px solid var(--gold-b);border-radius:10px;cursor:pointer;color:var(--gold);font-size:13px;font-weight:600}
+.add-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.safe{height:20px}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e1e35;border:.5px solid var(--gold-b);color:var(--gold);font-size:12px;padding:10px 18px;border-radius:20px;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:999}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ══ DETAIL BOTTOM SHEET ══ */
+#detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);z-index:200;pointer-events:none;transition:background .3s}
+#detail-overlay.open{background:rgba(0,0,0,.65);pointer-events:all}
+#detail-sheet{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-radius:20px 20px 0 0;z-index:201;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);max-height:92vh;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+#detail-sheet::-webkit-scrollbar{display:none}
+#detail-sheet.open{transform:translateY(0)}
+.ds-handle{width:36px;height:4px;background:var(--brd);border-radius:2px;margin:12px auto 0}
+.ds-close-btn{position:absolute;top:12px;right:14px;background:var(--bg2);border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10}
+.ds-close-btn svg{width:14px;height:14px;stroke:var(--t2);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+#detail-sheet .slider-wrap{height:260px}
+.ds-body{padding:16px 16px 32px}
+.ds-name{font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;line-height:1.2}
+.ds-loc{font-size:12px;color:var(--t3);display:flex;align-items:center;gap:5px;margin-bottom:16px}
+.ds-loc svg{width:13px;height:13px;stroke:var(--gold);fill:none;stroke-width:2;flex-shrink:0}
+.ds-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.ds-metric{background:var(--bg2);border:.5px solid var(--brd);border-radius:12px;padding:12px 14px}
+.ds-metric .mv{font-size:22px;font-weight:700;color:var(--gold);line-height:1}
+.ds-metric .ml{font-size:10px;color:var(--t3);margin-top:3px}
+.ds-progress{background:var(--bg2);border:.5px solid var(--brd);border-radius:12px;padding:12px 14px;margin-bottom:16px}
+.ds-progress .dp-title{font-size:11px;color:var(--t2);margin-bottom:8px}
+.ds-progress .dp-bar{height:6px;background:var(--brd);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.ds-progress .dp-fill{height:100%;background:var(--gold);border-radius:3px;transition:width .6s ease}
+.ds-progress .dp-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--t3)}
+.dp-pct{font-size:13px;font-weight:600;color:var(--gold)}
+.ds-stitle{font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.ds-desc{font-size:13px;color:#bbb;line-height:1.65;margin-bottom:16px}
+.ds-features{margin-bottom:16px}
+.ds-feat{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:.5px solid var(--brd);font-size:12px;color:#ccc}
+.ds-feat:last-child{border-bottom:none}
+.ds-feat svg{width:16px;height:16px;stroke:var(--gold);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.ds-realtor{background:var(--bg2);border:.5px solid var(--brd);border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.ds-realtor .rav{width:40px;height:40px;border-radius:50%;background:rgba(91,173,255,.12);border:1px solid rgba(91,173,255,.25);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--blue);flex-shrink:0}
+.ds-realtor .rname{font-size:13px;font-weight:600;color:#fff}
+.ds-realtor .rbadge{font-size:10px;color:var(--gold);margin-top:2px}
+.ds-realtor .rrating{margin-left:auto;text-align:right}
+.ds-realtor .rrating .rv{font-size:16px;font-weight:700;color:var(--gold)}
+.ds-realtor .rrating .rl{font-size:9px;color:var(--t3)}
+.ds-cta{width:100%;padding:14px;background:var(--gold-dim);border:.5px solid var(--gold-b);border-radius:12px;color:var(--gold);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
+.ds-cta svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ds-save{width:100%;padding:12px;background:transparent;border:.5px solid var(--brd);border-radius:12px;color:var(--t2);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}
+.ds-save svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ds-save.saved{color:var(--gold);border-color:var(--gold-b)}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <div class="logo">Prop<span>Vault</span></div>
+  <div class="mpill" id="mpill">Инвестор</div>
+</div>
+<div class="modebar">
+  <div class="mb on" onclick="setMode('investor',this)">Инвестор</div>
+  <div class="mb" onclick="setMode('realtor',this)">Риелтор</div>
+  <div class="mb" onclick="setMode('admin',this)">Модератор</div>
+</div>
+<div id="tabbar"></div>
+<div id="body"></div>
+<div id="toast"></div>
+<div id="detail-overlay" onclick="closeDetail()"></div>
+<div id="detail-sheet">
+  <div class="ds-handle"></div>
+  <button class="ds-close-btn" onclick="closeDetail()">
+    <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <div id="detail-content"></div>
+</div>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+// ── mode / tab state ──
+let mode = 'investor', tab = 'feed';
+
+// ── demo photos ──
+const PH = {
+  moscow: [
+    'https://images.unsplash.com/photo-1513326738677-b964603b136d?w=700&q=70',
+    'https://images.unsplash.com/photo-1596395147960-4f5f61aebb59?w=700&q=70',
+    'https://images.unsplash.com/photo-1548407260-da850faa41e3?w=700&q=70'
+  ],
+  spb: [
+    'https://images.unsplash.com/photo-1548407260-da850faa41e3?w=700&q=70',
+    'https://images.unsplash.com/photo-1513326738677-b964603b136d?w=700&q=70'
+  ],
+  sochi: [
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=700&q=70',
+    'https://images.unsplash.com/photo-1596395147960-4f5f61aebb59?w=700&q=70',
+    'https://images.unsplash.com/photo-1513326738677-b964603b136d?w=700&q=70'
+  ],
+  kazan: ['https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=700&q=70']
+};
+
+// ── projects data ──
+const PROJECTS = {
+  moscow: {
+    id:'moscow', badge:'hot', badgeText:'Горячий',
+    name:'Москва Сити — Башня А', loc:'Москва, ММДЦ Сити',
+    yld:'11.2', from:'₽1 500 000', raisedPct:73, total:'₽25М', got:'₽18.3М',
+    gotN:18300000, totalN:25000000,
+    deadline:'Q4 2026', area:'48–120 м²', floors:'62 этажа', units:'320 апартаментов',
+    desc:'Апартаменты бизнес-класса в сердце ММДЦ. Управляемая аренда через профессиональную УК — не нужно заниматься арендаторами самостоятельно. Высокий спрос и ограниченное предложение обеспечивают доходность выше рынка.',
+    features:['Управляемая аренда через УК','Отделка под ключ включена','Подземный паркинг','Консьерж 24/7','Рядом 3 станции метро'],
+    phone:'+7 495 000 11 22', email:'info@moscowcity.ru',
+    rInitials:'ИВ', rName:'Иван Виноградов', rAgency:'PropInvest Moscow', rRating:'4.9', rDeals:'47'
+  },
+  spb: {
+    id:'spb', badge:'new', badgeText:'Новый',
+    name:'Северная Долина — СПб', loc:'Санкт-Петербург, Приморский р-н',
+    yld:'9.8', from:'₽2 500 000', raisedPct:31, total:'₽50М', got:'₽15.5М',
+    gotN:15500000, totalN:50000000,
+    deadline:'Q2 2027', area:'55–140 м²', floors:'25 этажей', units:'180 квартир',
+    desc:'Жилой квартал у Финского залива с авторской архитектурой. Закрытая охраняемая территория, развитая инфраструктура. Высокая ликвидность за счёт дефицита предложения в Приморском районе.',
+    features:['Вид на залив из 60% квартир','Закрытая охраняемая территория','Велодорожки и парк','Ипотека от 3 банков','Рассрочка от застройщика'],
+    phone:'+7 812 000 22 33', email:'info@spbrealty.ru',
+    rInitials:'МС', rName:'Мария Степанова', rAgency:'Baltic Realty Group', rRating:'4.8', rDeals:'31'
+  },
+  sochi: {
+    id:'sochi', badge:'hot', badgeText:'Горячий',
+    name:'Причал Сочи — Адлер', loc:'Сочи, Адлерский р-н',
+    yld:'13.1', from:'₽800 000', raisedPct:55, total:'₽15М', got:'₽8.2М',
+    gotN:8200000, totalN:15000000,
+    deadline:'Q1 2026', area:'28–65 м²', floors:'12 этажей', units:'95 апартаментов',
+    desc:'Курортные апартаменты в 200 м от пляжа. Объект на стадии финишной отделки, заселение через 6 месяцев. УК работает под брендом 4★ отеля — стабильная загрузка 85% в сезон.',
+    features:['200 м до моря','Гарантированная доходность 13%','Брендированный отель 4★','Заселение в 2026 г.','Собственный бассейн и СПА'],
+    phone:'+7 862 000 33 44', email:'sochi@primorye.ru',
+    rInitials:'АК', rName:'Алексей Краснов', rAgency:'Sochi Premium Estate', rRating:'5.0', rDeals:'62'
+  },
+  kazan: {
+    id:'kazan', badge:'new', badgeText:'Новый',
+    name:'Иннополис — Казань', loc:'Казань, Особая экономическая зона',
+    yld:'7.4', from:'₽1 000 000', raisedPct:18, total:'₽30М', got:'₽5.4М',
+    gotN:5400000, totalN:30000000,
+    deadline:'Q3 2027', area:'40–80 м²', floors:'9 этажей', units:'240 квартир',
+    desc:'Жилая недвижимость в российском IT-городе с особым налоговым статусом. Постоянный спрос со стороны сотрудников технологических компаний — Иннополис растёт на 25% ежегодно.',
+    features:['ОЭЗ — особый налоговый режим','Арендаторы — IT-специалисты','Рост рынка +25% в год','Университет и школа рядом','Высокоскоростной интернет 10 Гбит'],
+    phone:'+7 843 000 44 55', email:'invest@innopolis.ru',
+    rInitials:'РГ', rName:'Рустем Галиев', rAgency:'Kazan Invest', rRating:'4.7', rDeals:'18'
+  }
+};
+
+let saved = new Set();
+let uploadedPhotos = [];
+let slideIdx = {};    // {id: currentIndex}
+let mSlideIdx = {};   // mod card slide indexes
+
+// ── MODES ──
+const MODES = {
+  investor: { label:'Инвестор',     tabs:[{id:'feed',l:'Объекты',i:'building'},{id:'saved',l:'Избранное',i:'heart'},{id:'iprofile',l:'Профиль',i:'user'}] },
+  realtor:  { label:'Риелтор · Pro',tabs:[{id:'myobj',l:'Объекты',i:'list'},{id:'addobj',l:'Добавить',i:'plus'},{id:'rplans',l:'Тариф',i:'crown'},{id:'rprofile',l:'Профиль',i:'user'}] },
+  admin:    { label:'Модератор',    tabs:[{id:'modq',l:'Очередь',i:'shield'},{id:'astats',l:'Статистика',i:'chart'}] }
+};
+
+function setMode(m, btn) {
+  mode = m; uploadedPhotos = [];
+  document.querySelectorAll('.mb').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  document.getElementById('mpill').textContent = MODES[m].label;
+  tab = MODES[m].tabs[0].id;
+  renderAll();
+}
+function switchTab(id) { tab = id; renderTabbar(); renderScreen(); }
+function renderAll() { renderTabbar(); renderScreen(); }
+
+function renderTabbar() {
+  var tabs = MODES[mode].tabs;
+  var html = '';
+  for (var i = 0; i < tabs.length; i++) {
+    var t = tabs[i];
+    html += '<div class="tab' + (t.id === tab ? ' on' : '') + '" onclick="switchTab(\'' + t.id + '\')">' + getIcon(t.i) + t.l + '</div>';
+  }
+  document.getElementById('tabbar').innerHTML = html;
+}
+
+function renderScreen() {
+  var fns = { feed:screenFeed, saved:screenSaved, iprofile:screenIProfile, myobj:screenMyObj, addobj:screenAddObj, rplans:screenRPlans, rprofile:screenRProfile, modq:screenModQ, astats:screenAStats };
+  var fn = fns[tab];
+  document.getElementById('body').innerHTML = fn ? fn() : '';
+  if (tab === 'addobj') initUpload();
+}
+
+// ── SLIDER (no nested template literals) ──
+function makeSlider(id, photos) {
+  var count = photos && photos.length ? photos.length : 0;
+  var slidesHtml = '';
+  if (count > 0) {
+    for (var i = 0; i < count; i++) {
+      slidesHtml += '<div class="slide"><img src="' + photos[i] + '" loading="lazy" onerror="this.style.display=\'none\'"></div>';
+    }
+  } else {
+    slidesHtml = '<div class="slide"><div class="slide-placeholder">' + cityArt() + '</div></div>';
+    count = 0;
+  }
+  var navHtml = count > 1
+    ? '<button class="slide-prev" onclick="sMove(event,\'' + id + '\',-1)" aria-label="Назад"><svg viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg></button>'
+    + '<button class="slide-next" onclick="sMove(event,\'' + id + '\',1)" aria-label="Вперёд"><svg viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg></button>'
+    : '';
+  var dotsHtml = '';
+  if (count > 1) {
+    dotsHtml = '<div class="slide-dots">';
+    for (var j = 0; j < count; j++) {
+      dotsHtml += '<div class="dot' + (j === 0 ? ' on' : '') + '" id="dot-' + id + '-' + j + '"></div>';
+    }
+    dotsHtml += '</div>';
+  }
+  var countHtml = count > 1 ? '<div class="photo-count">' + count + ' фото</div>' : '';
+  return '<div class="slider-wrap" id="sw-' + id + '"><div class="slides" id="sl-' + id + '">' + slidesHtml + '</div>' + navHtml + dotsHtml + countHtml + '</div>';
+}
+
+function sMove(e, id, dir) {
+  e.stopPropagation();
+  var sl = document.getElementById('sl-' + id);
+  if (!sl) return;
+  var count = sl.children.length;
+  var idx = ((slideIdx[id] || 0) + dir + count) % count;
+  slideIdx[id] = idx;
+  sl.style.transform = 'translateX(-' + (idx * 100) + '%)';
+  var wrap = document.getElementById('sw-' + id);
+  if (wrap) {
+    wrap.querySelectorAll('.dot').forEach(function(d, i) { d.classList.toggle('on', i === idx); });
+    var cnt = wrap.querySelector('.photo-count');
+    if (cnt) cnt.textContent = (idx + 1) + '/' + count + ' фото';
+  }
+}
+
+function cityArt() {
+  return '<svg viewBox="0 0 360 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice"><rect width="360" height="200" fill="#1a1630"/><rect x="20" y="80" width="22" height="120" fill="#2a2650" rx="2"/><rect x="50" y="55" width="28" height="145" fill="#322e60" rx="2"/><rect x="86" y="72" width="22" height="128" fill="#2a2650" rx="2"/><rect x="116" y="38" width="36" height="162" fill="#3d3870" rx="2"/><rect x="121" y="24" width="26" height="16" fill="#3d3870" rx="1"/><rect x="160" y="60" width="26" height="140" fill="#2a2650" rx="2"/><rect x="194" y="80" width="20" height="120" fill="#252250" rx="2"/><rect x="222" y="45" width="30" height="155" fill="#3d3870" rx="2"/><rect x="260" y="70" width="24" height="130" fill="#2a2650" rx="2"/><rect x="292" y="82" width="20" height="118" fill="#252250" rx="2"/><rect x="318" y="62" width="24" height="138" fill="#2a2650" rx="2"/><rect x="120" y="120" width="5" height="5" fill="#c9a84c" rx="0.5" opacity="0.9"/><rect x="130" y="106" width="5" height="5" fill="#c9a84c" rx="0.5" opacity="0.6"/><rect x="225" y="112" width="5" height="5" fill="#5badff" rx="0.5" opacity="0.7"/></svg>';
+}
+
+// ── INVESTOR ──
+function projectCard(p) {
+  var sid = p.id;
+  var photos = PH[sid] || [];
+  return '<div class="pcard" onclick="openDetail(\'' + sid + '\')">'
+    + '<div style="position:relative">' + makeSlider(sid, photos) + '<span class="pbadge ' + p.badge + '">' + p.badgeText + '</span></div>'
+    + '<div class="pinfo">'
+    + '<div class="pname">' + p.name + '</div>'
+    + '<div class="ploc"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>' + p.loc + '</div>'
+    + '<div class="pmeta"><div class="pyield"><div class="pct">' + p.yld + '%</div><div class="lb">годовых</div></div>'
+    + '<div class="pprice"><div class="am">от ' + p.from + '</div><div class="lb">мин. вход</div></div></div>'
+    + '<div class="pbar"><div class="br"><div class="fl" style="width:' + p.raisedPct + '%"></div></div>'
+    + '<div class="bm"><span>' + p.raisedPct + '% собрано</span><span>' + p.got + ' / ' + p.total + '</span></div></div>'
+    + '<div class="more-hint">Подробнее <svg viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg></div>'
+    + '</div></div>';
+}
+
+function screenFeed() {
+  return '<div class="hero">'
+    + '<div class="hero-tag">Недвижимость России</div>'
+    + '<div class="hero-h">Выберите объект</div>'
+    + '<div class="hero-s">Проекты по всей России</div>'
+    + '<div class="hstats"><div class="hs"><div class="v">12</div><div class="l">объектов</div></div>'
+    + '<div class="hs"><div class="v">8.4%</div><div class="l">средн. доход</div></div>'
+    + '<div class="hs"><div class="v">₽200М</div><div class="l">привлечено</div></div></div>'
+    + '</div>'
+    + '<div class="filter-row">'
+    + '<div class="fchip on" onclick="fChip(this)">Все</div>'
+    + '<div class="fchip" onclick="fChip(this)">Москва</div>'
+    + '<div class="fchip" onclick="fChip(this)">СПб</div>'
+    + '<div class="fchip" onclick="fChip(this)">Сочи</div>'
+    + '<div class="fchip" onclick="fChip(this)">Казань</div>'
+    + '<div class="fchip" onclick="fChip(this)">8%+</div>'
+    + '</div>'
+    + projectCard(PROJECTS.moscow)
+    + projectCard(PROJECTS.spb)
+    + projectCard(PROJECTS.sochi)
+    + projectCard(PROJECTS.kazan)
+    + '<div class="safe"></div>';
+}
+
+function fChip(el) {
+  document.querySelectorAll('.fchip').forEach(function(c){ c.classList.remove('on'); });
+  el.classList.add('on');
+}
+
+function screenSaved() {
+  return '<div class="empty">' + getIcon('heart') + '<p>Сохранённые объекты появятся здесь</p></div>';
+}
+
+function screenIProfile() {
+  return '<div class="phead"><div class="avatar av-inv">АК</div><div><div class="phead-name">Алексей Козлов</div><div class="phead-role">' + getIcon('user') + 'Инвестор · вход бесплатный</div></div></div>'
+    + '<div class="sgrid"><div class="scard"><div class="sv">6</div><div class="sl">просмотрено</div></div><div class="scard"><div class="sv">2</div><div class="sl">в избранном</div></div></div>'
+    + '<div class="mlist">'
+    + '<div class="mi">' + getIcon('heart') + '<span>Избранные объекты</span>' + getIcon('arr') + '</div>'
+    + '<div class="mi">' + getIcon('bell') + '<span>Уведомления о новых объектах</span>' + getIcon('arr') + '</div>'
+    + '<div class="mi">' + getIcon('info') + '<span>Поддержка</span>' + getIcon('arr') + '</div>'
+    + '</div><div class="safe"></div>';
+}
+
+// ── DETAIL SHEET ──
+function openDetail(id) {
+  var p = PROJECTS[id];
+  if (!p) return;
+  var photos = PH[id] || [];
+  var pct = Math.round(p.gotN / p.totalN * 100);
+  var isSaved = saved.has(id);
+
+  var featsHtml = '';
+  featsHtml += '<div class="ds-feat"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>' + p.floors + ' · ' + p.units + '</div>';
+  for (var i = 0; i < p.features.length; i++) {
+    featsHtml += '<div class="ds-feat"><svg viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>' + p.features[i] + '</div>';
+  }
+
+  var html = '<div style="position:relative">'
+    + makeSlider('detail-' + id, photos)
+    + '<span class="pbadge ' + p.badge + '">' + p.badgeText + '</span>'
+    + '</div>'
+    + '<div class="ds-body">'
+    + '<div class="ds-name">' + p.name + '</div>'
+    + '<div class="ds-loc"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>' + p.loc + '</div>'
+    + '<div class="ds-metrics">'
+    + '<div class="ds-metric"><div class="mv">' + p.yld + '%</div><div class="ml">годовых</div></div>'
+    + '<div class="ds-metric"><div class="mv">' + p.from + '</div><div class="ml">мин. вход</div></div>'
+    + '<div class="ds-metric"><div class="mv">' + p.deadline + '</div><div class="ml">срок сдачи</div></div>'
+    + '<div class="ds-metric"><div class="mv">' + p.area + '</div><div class="ml">площадь</div></div>'
+    + '</div>'
+    + '<div class="ds-progress">'
+    + '<div class="dp-title">Сбор средств</div>'
+    + '<div class="dp-bar"><div class="dp-fill" id="dpf-' + id + '" style="width:0%"></div></div>'
+    + '<div class="dp-meta"><span><span class="dp-pct">' + pct + '%</span> собрано</span><span>' + p.got + ' / ' + p.total + '</span></div>'
+    + '</div>'
+    + '<div class="ds-stitle">Об объекте</div>'
+    + '<div class="ds-desc">' + p.desc + '</div>'
+    + '<div class="ds-stitle">Характеристики</div>'
+    + '<div class="ds-features">' + featsHtml + '</div>'
+    + '<div class="ds-stitle">Риелтор</div>'
+    + '<div class="ds-realtor">'
+    + '<div class="rav">' + p.rInitials + '</div>'
+    + '<div><div class="rname">' + p.rName + '</div><div class="rbadge">' + p.rAgency + '</div></div>'
+    + '<div class="rrating"><div class="rv">★ ' + p.rRating + '</div><div class="rl">' + p.rDeals + ' сделок</div></div>'
+    + '</div>'
+    + '<button class="ds-cta" id="dscta-' + id + '" onclick="showContact(\'' + id + '\')">'
+    + '<svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.16 12 19.79 19.79 0 0 1 1.09 3.4 2 2 0 0 1 3.07 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'
+    + 'Показать контакт риелтора'
+    + '</button>'
+    + '<button class="ds-save' + (isSaved ? ' saved' : '') + '" id="dssv-' + id + '" onclick="toggleSave(\'' + id + '\')">'
+    + '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'
+    + (isSaved ? 'В избранном' : 'Добавить в избранное')
+    + '</button>'
+    + '</div>';
+
+  document.getElementById('detail-content').innerHTML = html;
+  document.getElementById('detail-overlay').classList.add('open');
+  document.getElementById('detail-sheet').classList.add('open');
+  document.getElementById('detail-sheet').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      var bar = document.getElementById('dpf-' + id);
+      if (bar) bar.style.width = pct + '%';
+    });
+  });
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('open');
+  document.getElementById('detail-sheet').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function showContact(id) {
+  var p = PROJECTS[id];
+  var btn = document.getElementById('dscta-' + id);
+  if (!p || !btn) return;
+  btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.16 12 19.79 19.79 0 0 1 1.09 3.4 2 2 0 0 1 3.07 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span style="font-size:16px;font-weight:700">' + p.phone + '</span><span style="font-size:12px">' + p.email + '</span>';
+  btn.style.flexDirection = 'column';
+  btn.style.gap = '3px';
+  btn.onclick = null;
+}
+
+function toggleSave(id) {
+  var btn = document.getElementById('dssv-' + id);
+  if (!btn) return;
+  if (saved.has(id)) {
+    saved.delete(id);
+    btn.className = 'ds-save';
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Добавить в избранное';
+    showToast('Удалено из избранного');
+  } else {
+    saved.add(id);
+    btn.className = 'ds-save saved';
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>В избранном';
+    showToast('Добавлено в избранное');
+  }
+}
+
+// ── REALTOR ──
+function screenMyObj() {
+  return '<div class="quota"><div class="qt">Использовано: 4 из 5 объектов (тариф Pro)</div><div class="qb"><div class="qf" style="width:80%"></div></div><div class="qm"><span>4 активных</span><span>лимит: 5</span></div></div>'
+    + '<div class="sec" style="padding-top:4px">Мои объекты</div>'
+    + objRow('Москва Сити — Башня А', 'Москва · 11.2% · от ₽1 500 000', 'pub', 'Опубликован', PH.moscow[0])
+    + objRow('Северная Долина — СПб', 'СПб · 9.8% · от ₽2 500 000', 'pub', 'Опубликован', PH.spb[0])
+    + objRow('Причал Сочи — Адлер', 'Сочи · 13.1% · от ₽800 000', 'pub', 'Опубликован', PH.sochi[0])
+    + objRow('Иннополис — Казань', 'Казань · 7.4% · от ₽1 000 000', 'pend', 'На модерации', null)
+    + '<div class="add-btn" onclick="switchTab(\'addobj\')">' + getIcon('plus') + 'Добавить объект</div>'
+    + '<div class="safe"></div>';
+}
+
+function objRow(name, sub, bc, bt, thumb) {
+  var thumbHtml = thumb
+    ? '<img class="ocard-thumb" src="' + thumb + '" onerror="this.style.display=\'none\'">'
+    : '<div class="ocard-thumb-ph"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg></div>';
+  return '<div class="ocard"><div class="ocard-top">' + thumbHtml + '<div class="on2">' + name + '</div><span class="pbadge ' + bc + '">' + bt + '</span></div><div class="ocard-body">' + sub + '</div></div>';
+}
+
+function screenAddObj() {
+  return '<div class="form-wrap">'
+    + '<div class="form-title">Новый объект</div>'
+    + '<div class="form-sub">После отправки объект уходит на модерацию. Публикуется только после одобрения.</div>'
+    + '<div class="field"><label>Название объекта</label><input type="text" placeholder="Например: Жилой комплекс Восток"></div>'
+    + '<div class="field-row"><div class="field"><label>Регион / область</label><input type="text" placeholder="Московская обл."></div><div class="field"><label>Город</label><input type="text" placeholder="Москва"></div></div>'
+    + '<div class="field-row"><div class="field"><label>Доходность, % год.</label><input type="number" placeholder="11.5" inputmode="decimal"></div><div class="field"><label>Мин. вход, ₽</label><input type="number" placeholder="1500000" inputmode="numeric"></div></div>'
+    + '<div class="field-row"><div class="field"><label>Цель сбора, ₽</label><input type="number" placeholder="25000000" inputmode="numeric"></div><div class="field"><label>Срок сдачи</label><input type="text" placeholder="Q3 2026"></div></div>'
+    + '<div class="field"><label>Краткое описание</label><textarea placeholder="Жилой комплекс с управляемой арендой..."></textarea></div>'
+    + '<div class="sec" style="padding:14px 0 8px;font-size:9px">Фотографии объекта</div>'
+    + '<div id="photo-preview-grid" class="photo-preview-grid"></div>'
+    + '<div class="photo-upload-zone" id="upload-zone"><input type="file" accept="image/*" multiple id="photo-input" onchange="handlePhotos(this)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg><p id="upload-lbl">Нажмите или перетащите фото</p><span>JPG, PNG · до 10 фото · первое — главное</span></div>'
+    + '<div class="sec" style="padding:14px 0 8px;font-size:9px">Контакт для инвесторов</div>'
+    + '<div class="field-row"><div class="field"><label>Телефон</label><input type="tel" placeholder="+7 999 000 11 22"></div><div class="field"><label>Email</label><input type="email" placeholder="agent@mail.com"></div></div>'
+    + '<button class="submit-btn" onclick="submitObj()">Отправить на модерацию</button>'
+    + '</div><div class="safe"></div>';
+}
+
+function initUpload() { uploadedPhotos = []; renderPreviews(); }
+
+function handlePhotos(input) {
+  var files = Array.from(input.files);
+  var rem = 10 - uploadedPhotos.length;
+  var toAdd = files.slice(0, rem);
+  toAdd.forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      uploadedPhotos.push({ dataUrl: e.target.result, name: file.name });
+      renderPreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+  if (files.length > rem) showToast('Максимум 10 фото. Добавлено ' + toAdd.length);
+  input.value = '';
+}
+
+function renderPreviews() {
+  var grid = document.getElementById('photo-preview-grid');
+  var zone = document.getElementById('upload-zone');
+  var lbl = document.getElementById('upload-lbl');
+  if (!grid) return;
+  var html = '';
+  for (var i = 0; i < uploadedPhotos.length; i++) {
+    html += '<div class="preview-item"><img src="' + uploadedPhotos[i].dataUrl + '">'
+      + '<button class="del-btn" onclick="delPhoto(' + i + ')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+      + (i === 0 ? '<span class="main-badge">Главное</span>' : '')
+      + '</div>';
+  }
+  grid.innerHTML = html;
+  if (uploadedPhotos.length >= 10) { zone.style.display = 'none'; }
+  else {
+    zone.style.display = '';
+    if (lbl) lbl.textContent = uploadedPhotos.length > 0 ? 'Добавить ещё (' + uploadedPhotos.length + '/10)' : 'Нажмите или перетащите фото';
+  }
+}
+
+function delPhoto(idx) { uploadedPhotos.splice(idx, 1); renderPreviews(); }
+
+function submitObj() {
+  showToast('Объект отправлен на модерацию');
+  uploadedPhotos = [];
+  setTimeout(function(){ switchTab('myobj'); }, 800);
+}
+
+function screenRPlans() {
+  var ck = '<svg style="width:14px;height:14px;stroke:#c9a84c;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>';
+  var ckp = '<svg style="width:14px;height:14px;stroke:#b07aff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0" viewBox="0 0 24 24"><polyline points="20,6 9,17 4,12"/></svg>';
+  var cx = '<svg style="width:14px;height:14px;stroke:#333;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  return '<div class="plans-header"><h2>Тарифы для риелторов</h2><p>Инвесторы заходят бесплатно</p></div>'
+    + '<div class="plan"><div class="plan-head s"><div class="plan-name">Старт</div><div class="plan-price"><span class="pa">₽1 900</span><span class="pp">/ месяц</span></div></div>'
+    + '<div class="plan-feats"><div class="pfeat">' + ck + 'До 1 объекта · до 5 фото</div><div class="pfeat">' + ck + 'Телефон + email инвесторам</div><div class="pfeat dim">' + cx + 'Аналитика просмотров</div><div class="pfeat dim">' + cx + 'Приоритетное размещение</div><div class="pfeat dim">' + cx + 'Логотип агентства</div></div>'
+    + '<button class="plan-btn s" onclick="showToast(\'Выбран тариф Старт\')">Выбрать</button></div>'
+    + '<div class="plan feat"><div class="plan-head p"><span class="plan-badge2 pop">Популярный</span><div class="plan-name">Pro</div><div class="plan-price"><span class="pa" style="color:var(--gold)">₽4 900</span><span class="pp">/ месяц</span></div></div>'
+    + '<div class="plan-feats"><div class="pfeat">' + ck + 'До 5 объектов · до 15 фото</div><div class="pfeat">' + ck + 'Аналитика просмотров</div><div class="pfeat">' + ck + 'Уведомление при интересе</div><div class="pfeat">' + ck + 'Телефон + email инвесторам</div><div class="pfeat dim">' + cx + 'Приоритетное размещение</div></div>'
+    + '<button class="plan-btn p" onclick="showToast(\'Текущий план — Pro\')">Текущий план</button></div>'
+    + '<div class="plan"><div class="plan-head e"><span class="plan-badge2 top">Максимум</span><div class="plan-name" style="color:var(--purple)">Elite</div><div class="plan-price"><span class="pa" style="color:var(--purple)">₽12 900</span><span class="pp">/ месяц</span></div></div>'
+    + '<div class="plan-feats"><div class="pfeat" style="color:var(--purple)">' + ckp + 'Безлимит объектов · до 30 фото</div><div class="pfeat" style="color:var(--purple)">' + ckp + 'Приоритет в выдаче</div><div class="pfeat" style="color:var(--purple)">' + ckp + 'Логотип агентства</div><div class="pfeat" style="color:var(--purple)">' + ckp + 'Персональный менеджер</div><div class="pfeat" style="color:var(--purple)">' + ckp + 'Аналитика + отчёты</div></div>'
+    + '<button class="plan-btn e" onclick="showToast(\'Переход на Elite — скоро!\')">Улучшить до Elite</button></div>'
+    + '<div class="safe"></div>';
+}
+
+function screenRProfile() {
+  return '<div class="phead"><div class="avatar av-re">ИВ</div><div><div class="phead-name">Иван Виноградов</div><div class="phead-role">' + getIcon('crown') + 'Pro · активен до 20 июля</div></div></div>'
+    + '<div class="sgrid"><div class="scard"><div class="sv">4</div><div class="sl">объектов</div></div><div class="scard"><div class="sv">128</div><div class="sl">просмотров</div></div><div class="scard"><div class="sv">23</div><div class="sl">запросов</div></div><div class="scard"><div class="sv">4.8</div><div class="sl">рейтинг</div></div></div>'
+    + '<div class="mlist"><div class="mi">' + getIcon('list') + '<span>Мои объекты</span>' + getIcon('arr') + '</div><div class="mi">' + getIcon('file') + '<span>Документы агентства</span>' + getIcon('arr') + '</div><div class="mi">' + getIcon('bell') + '<span>Уведомления</span>' + getIcon('arr') + '</div><div class="mi cta">' + getIcon('crown') + '<span>Улучшить до Elite</span>' + getIcon('arr') + '</div></div>'
+    + '<div class="safe"></div>';
+}
+
+// ── ADMIN ──
+function makeModCard(id, name, realtor, meta, desc, photos) {
+  var slidesHtml = '';
+  if (photos && photos.length > 0) {
+    for (var i = 0; i < photos.length; i++) {
+      slidesHtml += '<div class="mcard-slide"><img src="' + photos[i] + '" loading="lazy"></div>';
+    }
+  } else {
+    slidesHtml = '<div class="mcard-slide"><div class="ph"><svg viewBox="0 0 24 24" style="width:28px;height:28px;stroke:#2a2a45;fill:none;stroke-width:1.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div></div>';
+  }
+  var navHtml = photos && photos.length > 1
+    ? '<div class="mc-nav" onclick="mSlide(\'' + id + '\')">' + photos.length + ' фото ›</div>'
+    : '';
+  return '<div class="mcard" id="mc-' + id + '">'
+    + '<div class="mcard-slider"><div class="mcard-slides" id="msl-' + id + '">' + slidesHtml + '</div>' + navHtml + '</div>'
+    + '<div class="mcard-top"><div class="mt">' + name + '</div><span class="ms pend">Новый</span></div>'
+    + '<div class="mcard-body"><p class="realtor">' + realtor + '</p><p>' + meta + '</p><p>' + desc + '</p>'
+    + '<div class="mbtns"><button class="appr" onclick="modAction(\'' + id + '\',\'appr\')">Одобрить</button><button class="rej" onclick="modAction(\'' + id + '\',\'rej\')">Отклонить</button></div>'
+    + '</div></div>';
+}
+
+function mSlide(id) {
+  var sl = document.getElementById('msl-' + id);
+  if (!sl) return;
+  var count = sl.children.length;
+  var idx = ((mSlideIdx[id] || 0) + 1) % count;
+  mSlideIdx[id] = idx;
+  sl.style.transform = 'translateX(-' + (idx * 100) + '%)';
+  var nav = sl.parentNode.querySelector('.mc-nav');
+  if (nav) nav.textContent = (idx + 1) + '/' + count + ' фото ›';
+}
+
+function screenModQ() {
+  return '<div class="mod-head"><h2>На модерации</h2><p>3 объекта ждут проверки</p></div>'
+    + makeModCard('lisbon', 'Иннополис — Казань', 'Риелтор: Иван В. (Pro)', 'Казань, Иннополис · 7.4% · от ₽1 000 000', 'Апартаменты у реки, сдача 2026 г.', PH.kazan)
+    + makeModCard('batumi', 'Причал Сочи — Адлер', 'Риелтор: Мария С. (Elite)', 'Сочи, Адлерский р-н · 13.1% · от ₽800 000', 'Курортная недвижимость, 200 м от моря', PH.sochi)
+    + makeModCard('antalya', 'Екатеринбург — Академический', 'Риелтор: Алмат К. (Старт)', 'Екатеринбург · 9.2% · от ₽2 000 000', 'Жилой квартал, сдача Q4 2026', [])
+    + '<div class="safe"></div>';
+}
+
+function modAction(id, action) {
+  var card = document.getElementById('mc-' + id);
+  if (!card) return;
+  var badge = card.querySelector('.ms');
+  var btns = card.querySelector('.mbtns');
+  if (action === 'appr') {
+    badge.className = 'ms ok'; badge.textContent = 'Одобрен';
+    showToast('Объект одобрен и опубликован');
+  } else {
+    badge.style.background = 'rgba(226,75,74,.15)'; badge.style.color = 'var(--red)'; badge.textContent = 'Отклонён';
+    showToast('Объект отклонён');
+  }
+  btns.remove();
+}
+
+function screenAStats() {
+  return '<div class="mod-head"><h2>Статистика</h2><p>Данные по платформе</p></div>'
+    + '<div class="astats"><div class="astat"><div class="av">34</div><div class="al">риелторов</div></div><div class="astat"><div class="av">291</div><div class="al">инвесторов</div></div><div class="astat"><div class="av">87</div><div class="al">объектов</div></div><div class="astat"><div class="av">₽380К</div><div class="al">MRR</div></div></div>'
+    + '<div class="abox"><div class="abox-title">Прирост за 30 дней</div><div class="arow"><span class="ak">Новых риелторов</span><span class="aval">+8</span></div><div class="arow"><span class="ak">Новых инвесторов</span><span class="aval">+64</span></div><div class="arow"><span class="ak">Объектов одобрено</span><span class="aval">+21</span></div><div class="arow"><span class="ak">Запросов контактов</span><span class="aval">+189</span></div></div>'
+    + '<div class="abox"><div class="abox-title">Риелторы по тарифам</div><div class="arow"><span class="ak">Старт (₽1 900)</span><span class="aval">14</span></div><div class="arow"><span class="ak">Pro (₽4 900)</span><span class="aval">16</span></div><div class="arow"><span class="ak">Elite (₽12 900)</span><span class="aval">4</span></div></div>'
+    + '<div class="safe"></div>';
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+// ── ICONS ──
+function getIcon(name) {
+  var icons = {
+    building: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>',
+    heart:    '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+    user:     '<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    list:     '<svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+    plus:     '<svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    crown:    '<svg viewBox="0 0 24 24"><path d="M2 4l4 10h12l4-10-5 3-5-7-5 7z"/><rect x="4" y="16" width="16" height="2" rx="1"/></svg>',
+    shield:   '<svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9,12 11,14 15,10"/></svg>',
+    chart:    '<svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    arr:      '<svg class="arr" viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg>',
+    bell:     '<svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+    info:     '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>',
+    file:     '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>'
+  };
+  return icons[name] || '';
+}
+
+renderAll();
+</script>
+</body>
+</html>
