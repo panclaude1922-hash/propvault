@@ -13,12 +13,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def kb_investor_main(webapp_url: str) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        keyboard=[[
-            KeyboardButton(
-                text="🏠 Открыть PropVault",
-                web_app=WebAppInfo(url=webapp_url)
-            )
-        ]],
+        keyboard=[
+            [KeyboardButton(text="🏠 Открыть PropVault", web_app=WebAppInfo(url=webapp_url))],
+            [KeyboardButton(text="🔄 Сменить роль"), KeyboardButton(text="ℹ️ Как это работает")],
+        ],
         resize_keyboard=True
     )
 
@@ -28,7 +26,7 @@ def kb_realtor_main(webapp_url: str) -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text="🏠 Открыть PropVault", web_app=WebAppInfo(url=webapp_url))],
             [KeyboardButton(text="📋 Мои объекты"), KeyboardButton(text="💳 Мой тариф")],
-            [KeyboardButton(text="➕ Добавить объект")]
+            [KeyboardButton(text="➕ Добавить объект"), KeyboardButton(text="🔄 Сменить роль")],
         ],
         resize_keyboard=True
     )
@@ -113,4 +111,28 @@ def kb_property_actions(prop_id: int, status: str) -> InlineKeyboardMarkup:
 def kb_cancel() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="✖️ Отмена", callback_data="cancel")
+    return builder.as_markup()
+
+# ── СМЕНА РОЛИ ───────────────────────────────────────────
+
+def kb_change_role(current_role: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    if current_role != "investor":
+        builder.button(text="👤 Стать инвестором", callback_data="changerole:investor")
+    if current_role != "realtor":
+        builder.button(text="🏢 Стать риелтором",  callback_data="changerole:realtor")
+    builder.button(text="✖️ Отмена", callback_data="cancel")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def kb_confirm_role_change(new_role: str) -> InlineKeyboardMarkup:
+    labels = {"investor": "инвестора", "realtor": "риелтора"}
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text=f"✅ Да, сменить на {labels.get(new_role, new_role)}",
+        callback_data=f"confirmrole:{new_role}"
+    )
+    builder.button(text="✖️ Отмена", callback_data="cancel")
+    builder.adjust(1)
     return builder.as_markup()
