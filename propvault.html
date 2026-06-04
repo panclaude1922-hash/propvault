@@ -255,30 +255,30 @@ const tg = window.Telegram && window.Telegram.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
 // ── API ──
-const API_URL = 'ingenious-appreciation-production-2238.up.railway.app'; // замените на URL Railway после деплоя
+const API_URL = 'YOUR_RAILWAY_URL'; // замените на URL Railway после деплоя
 var currentUser = null; // заполняется после авторизации
 
 async function apiAuth() {
   var initData = tg && tg.initData ? tg.initData : '';
-  
-  // ВРЕМЕННО: показываем что происходит
-  console.log('initData:', initData ? 'есть (' + initData.length + ' символов)' : 'ПУСТОЙ');
-  
   if (!initData) {
-    // Режим разработки — без Telegram
     currentUser = { role: 'investor', first_name: 'Гость', tg_id: 0, subscription: null };
     return currentUser;
   }
   try {
+    // cache:no-store гарантирует свежий ответ при каждом открытии
     var res = await fetch(API_URL + '/auth', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
+      },
       body: JSON.stringify({ init_data: initData })
     });
-    if (!res.ok) throw new Error('auth failed');
+    if (!res.ok) throw new Error('auth failed ' + res.status);
     currentUser = await res.json();
     return currentUser;
   } catch(e) {
+    console.error('auth error:', e);
     currentUser = { role: 'investor', first_name: 'Гость', tg_id: 0, subscription: null };
     return currentUser;
   }
@@ -894,40 +894,59 @@ function getIcon(name) {
 
 // ── INIT: авторизация → рендер ──
 async function init() {
-  // Показываем экран загрузки
-  document.getElementById('body').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px"><div style="width:36px;height:36px;border:3px solid #2a2a45;border-top-color:#c9a84c;border-radius:50%;animation:spin .8s linear infinite"></div><div style="font-size:14px;color:#555">Авторизация...</div></div>';
-  document.getElementById('tabbar').innerHTML = '';
+  showLoader('Авторизация...');
 
   var user = await apiAuth();
+  applyUser(user);
+}
 
+function showLoader(text) {
+  document.getElementById('body').innerHTML =
+    '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px">'
+    + '<div style="width:36px;height:36px;border:3px solid #2a2a45;border-top-color:#c9a84c;border-radius:50%;animation:spin .8s linear infinite"></div>'
+    + '<div style="font-size:14px;color:#555">' + (text || 'Загрузка...') + '</div>'
+    + '</div>';
+  document.getElementById('tabbar').innerHTML = '';
+}
+
+function applyUser(user) {
   // Определяем режим по роли
   if (user.role === 'admin') {
     mode = 'admin';
   } else if (user.role === 'realtor') {
     mode = 'realtor';
-    // Обновляем label тарифа в шапке
     if (user.subscription) {
       MODES.realtor.label = 'Риелтор · ' + user.subscription.label;
     } else {
-      MODES.realtor.label = 'Риелтор · нет подписки';
+      MODES.realtor.label = 'Риелтор';
     }
   } else {
     mode = 'investor';
   }
 
-  // Скрываем переключатель режимов (в проде не нужен)
+  // Скрываем переключатель режимов в Telegram
   var modebar = document.querySelector('.modebar');
   if (modebar && tg && tg.initData) {
     modebar.style.display = 'none';
   }
 
-  // Обновляем пилюлю с именем
+  // Имя в шапке
   var pill = document.getElementById('mpill');
   if (pill) pill.textContent = user.first_name || MODES[mode].label;
 
   tab = MODES[mode].tabs[0].id;
   renderAll();
   fixSticky();
+}
+
+// Перезапрашиваем роль когда пользователь возвращается в Mini App
+// (например после смены роли в боте)
+if (tg) {
+  tg.onEvent('activated', function() {
+    apiAuth().then(function(user) {
+      applyUser(user);
+    });
+  });
 }
 
 function fixSticky() {
